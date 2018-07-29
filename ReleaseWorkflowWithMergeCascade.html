@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Release Workflow with merge cascade</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gitgraph.js/1.12.0/gitgraph.min.js"></script>
+  <script src="js/gitgraph.pr.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/gitgraph.js/1.12.0/gitgraph.min.css" />
+</head>
+
+<body>
+  <h1>Release Workflow with merge cascade</h1>
+  <canvas id="gitGraph"></canvas>
+  <script>
+    var grey = "#777777";
+    var grey2 = "#b7b7b7";
+    var blue = "#008fb5";
+    var orange = "#ff8020";
+
+    var myTemplate = new GitGraph.Template({
+      colors: [blue, grey, orange, blue, grey2, orange, blue, grey, orange],
+      branch: {
+        lineWidth: 9,
+        spacingX: 60,
+        labelFont: "normal 13pt Calibri",
+        labelColor: "white",
+        labelRotation: 0,
+        showLabel: true,
+      },
+      commit: {
+        spacingY: -40,
+        dot: {
+          size: 12
+        },
+        message: {
+          font: "normal 14pt Arial",
+          displayAuthor: false,
+          displayHash: false,
+        }
+      }
+    });
+
+    var gitgraph = new PrGitGraph({
+      template: myTemplate,
+      orientation: "vertical",
+      // mode: "compact",
+      author: "developer@company.com",
+    });
+
+    // Create initial commit and start develop & release/2.0 branches
+    var develop = gitgraph.branch({ name: "develop", column: 1 }).commit("Initial commit");
+    var release20 = develop.branch({ name: "release/2.0", column: 7 }).dummy_commit();
+
+    // Work on feature/f1 and integrate in develop
+    var feature1 = develop.branch({ name: "feature/f1", column: 0 })
+    feature1.commit("Implement feature1").commit("Review");
+    feature1.pr_merge(develop).delete();
+
+    // Start release/2.1 branch on develop
+    var release21 = develop.branch({ name: "release/2.1", column: 4 }).dummy_commit();
+
+    // Work on feature/f2 and integrate in develop
+    var feature2 = develop.branch({ name: "feature/f2", column: 0 })
+    feature2.commit("Implement feature2").commit("Review");
+    feature2.pr_merge(develop).delete();
+
+    // Work on feature/bugfix and integrate in release/2.0
+    var featureBugfix = release20.branch({ name: "feature/bugfix", column: 6 })
+    featureBugfix.commit("Fix it").commit("Review");
+    featureBugfix.pr_merge(release20).delete();
+
+    // Meanwhile, work on feature/f3 and integrate in release/2.1
+    var feature3 = release21.branch({ name: "feature/f3", column: 3 })
+    feature3.commit("Implement feature3").commit("Review");
+    feature3.pr_merge(release21).delete();
+
+    // Perform merge cascade for feature/f3 to develop
+    var cascadeF3 = develop.branch({ name: "cascade/f3", column: 2 })
+    release21.merge(cascadeF3);
+    cascadeF3.pr_merge(develop).delete();
+
+    // Perform merge cascade for feature/bugfix to release/2.1
+    var cascadeBugfix = release21.branch({ name: "cascade/bugfix", column: 5 });
+    release20.merge(cascadeBugfix);
+    cascadeBugfix.pr_merge(release21).delete();
+
+    // Start merge cascade for feature/bugfix to develop
+    cascadeBugfix = develop.branch({ name: "cascade/bugfix", column: 2 });
+    release21.merge(cascadeBugfix);
+
+    // Meanwhile, work on feature/f4 and integrate in develop
+    var feature4 = develop.branch({ name: "feature/f4", column: 0 })
+    feature4.commit("Implement feature4").commit("Review");
+    feature4.pr_merge(develop).delete();
+
+    // Finish merge cascade for feature/bugfix to develop, fixing conflicts
+    cascadeBugfix.commit("Solve conflict");
+    cascadeBugfix.pr_merge(develop).delete();
+
+    release20.dummy_commit();
+    release21.dummy_commit();
+    develop.dummy_commit();
+  </script>
+</body>
+
+</html>
