@@ -1,2 +1,2 @@
 # gitgraph-mergecascade
-Release Workflow with merge cascade
+Illustrate a release Workflow with merge cascade using gitgraph.js.
